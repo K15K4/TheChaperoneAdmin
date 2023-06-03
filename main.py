@@ -1,3 +1,6 @@
+import os
+import sys
+
 import psycopg2
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import QGridLayout, QLabel, QLineEdit, QPushButton
@@ -29,18 +32,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # Получение данных о пользователе
         cur = conn.cursor()
         cur.execute(f"""SELECT * FROM "User" WHERE "id_User"='{user_id}'""")
-
-
         user_data = cur.fetchone()
-
         # Получение данных о роли пользователя
         cur.execute(f"""SELECT "name_Roles" FROM "Roles" WHERE "id_Roles"='{user_data[9]}'""")
         role_name = cur.fetchone()[0]
-
         # Создание виджета для работы с базой данных
         self.database_widget = DatabaseWidget(role_name)
         self.setCentralWidget(self.database_widget)
-
         # Закрытие соединения с базой данных
         cur.close()
         conn.close()
@@ -54,27 +52,22 @@ class LoginWidget(QtWidgets.QWidget):
         super().__init__()
         self.setWindowTitle('Login Form')
         self.resize(300, 200)
-
         layout = QGridLayout()
-
         label_name = QLabel('<font size="4"> Username </font>')
         self.login_edit = QLineEdit()
         self.login_edit.setPlaceholderText('Please enter your username')
         layout.addWidget(label_name, 0, 0)
         layout.addWidget(self.login_edit, 0, 1)
-
         label_password = QLabel('<font size="4"> Password </font>')
         self.password_edit = QLineEdit()
         self.password_edit.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
         self.password_edit.setPlaceholderText('Please enter your password')
         layout.addWidget(label_password, 1, 0)
         layout.addWidget(self.password_edit, 1, 1)
-
         login_button = QPushButton('Login')
         login_button.clicked.connect(self.on_login)
         layout.addWidget(login_button, 2, 0, 1, 2)
         layout.setRowMinimumHeight(2, 75)
-
         self.setLayout(layout)
 
 
@@ -95,19 +88,11 @@ class LoginWidget(QtWidgets.QWidget):
         # Поиск пользователя в базе данных
         cur = conn.cursor()
         query = f"""SELECT "id_User" FROM "User" WHERE "log_User" = '{login}' AND "pass_User" = '{password}';"""
-
-
-        cur.execute(query);
-
-
-        #cur.execute(query)
-
+        cur.execute(query)
         user_id = cur.fetchone()
-
         # Отправка сигнала авторизации
         if user_id is not None:
             self.login_signal.emit(user_id[0])
-
         # Закрытие соединения с базой данных
         cur.close()
         conn.close()
@@ -135,6 +120,9 @@ class DatabaseWidget(QtWidgets.QWidget):
         layout.addWidget(self.table_view)
         layout.addWidget(self.add_button)
         layout.addWidget(self.save_button)
+        self.logout_button = QtWidgets.QPushButton("Выход", clicked=self.return_to_auth)
+        layout.addWidget(self.logout_button, alignment=QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignRight)
+
         self.setLayout(layout)
 
         # Установка прав доступа в зависимости от роли пользователя
@@ -196,10 +184,6 @@ class DatabaseWidget(QtWidgets.QWidget):
             for j, cell in enumerate(row):
                 self.table_model.setItem(i, j, QtGui.QStandardItem(str(cell)))
 
-    def show_add_dialog(self):
-        add_dialog = AddDialog(self, self.cur)
-        add_dialog.exec()
-
     def save_table_data(self):
         # Получение данных из таблицы и их сохранение в базе данных
         rows = self.table_model.rowCount()
@@ -218,6 +202,12 @@ class DatabaseWidget(QtWidgets.QWidget):
             # Отображение сообщения об успешном сохранении
         QtWidgets.QMessageBox.information(self, "Уведомление", "Изменения успешно сохранены!")
 
+    def show_add_dialog(self):
+        add_dialog = AddDialog(self, self.cur)
+        add_dialog.exec()
+
+    def return_to_auth(self):
+        os.execl(sys.executable, sys.executable, *sys.argv)
 
 
 id_columns = {
